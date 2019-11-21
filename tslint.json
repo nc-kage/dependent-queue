@@ -9,7 +9,6 @@
     "quotemark": [true, "single"],
     "no-console": false,
     "import-name": false,
-    "ordered-imports": false,
     "object-literal-sort-keys": false,
     "align": false,
     "prefer-array-literal": false,
