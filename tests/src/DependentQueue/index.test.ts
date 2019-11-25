@@ -217,10 +217,28 @@ describe('DependentQueue', () => {
     const third = new ThirdType();
     const fourth = new FourthType();
     const dq = new DependentQueue(typeGetter);
+
+    const emptyTypeCallback = jest.fn();
+    const existsTypeCallback = jest.fn();
+
+    dq.on('emptyType', emptyTypeCallback);
+    dq.on('existType', existsTypeCallback);
+
     dq.offer(first);
+    expect(existsTypeCallback.mock.calls.length).toBe(1);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(first.type);
+
     dq.offer(second);
+    expect(existsTypeCallback.mock.calls.length).toBe(2);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(second.type);
+
     dq.offer(third, [first, second]);
+    expect(existsTypeCallback.mock.calls.length).toBe(2);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(second.type);
+
     dq.offer(fourth, third);
+    expect(existsTypeCallback.mock.calls.length).toBe(2);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(second.type);
 
     expect(dq.peek(first.type)).toEqual(first);
     expect(dq.peek()).toEqual(first);
@@ -231,6 +249,9 @@ describe('DependentQueue', () => {
     expect(dq.peek(fourth.type)).toBeNull();
 
     expect(dq.poll(first.type)).toEqual(first);
+    expect(emptyTypeCallback.mock.calls.length).toBe(1);
+    expect(last(emptyTypeCallback.mock.calls)[0]).toBe(first.type);
+
     expect(dq.peek(first.type)).toBeNull();
     expect(dq.peek(second.type)).toEqual(second);
     expect(dq.peek()).toEqual(second);
@@ -238,6 +259,11 @@ describe('DependentQueue', () => {
     expect(dq.peek(fourth.type)).toBeNull();
 
     expect(dq.poll(second.type)).toEqual(second);
+    expect(emptyTypeCallback.mock.calls.length).toBe(2);
+    expect(last(emptyTypeCallback.mock.calls)[0]).toBe(second.type);
+    expect(existsTypeCallback.mock.calls.length).toBe(3);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(third.type);
+
     expect(dq.peek(second.type)).toBeNull();
     expect(dq.peek(third.type)).toEqual(third);
     expect(dq.peek()).toEqual(third);
@@ -246,11 +272,21 @@ describe('DependentQueue', () => {
     expect(dq.peek(first.type)).toBeNull();
     expect(dq.peek(second.type)).toBeNull();
     expect(dq.poll(third.type)).toEqual(third);
+    expect(emptyTypeCallback.mock.calls.length).toBe(3);
+    expect(last(emptyTypeCallback.mock.calls)[0]).toBe(third.type);
+    expect(existsTypeCallback.mock.calls.length).toBe(4);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(fourth.type);
+
     expect(dq.peek(third.type)).toBeNull();
     expect(dq.peek(fourth.type)).toEqual(fourth);
     expect(dq.peek()).toEqual(fourth);
 
     expect(dq.poll(fourth.type)).toEqual(fourth);
+    expect(emptyTypeCallback.mock.calls.length).toBe(4);
+    expect(last(emptyTypeCallback.mock.calls)[0]).toBe(fourth.type);
+    expect(existsTypeCallback.mock.calls.length).toBe(4);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(fourth.type);
+
     expect(dq.peek(first.type)).toBeNull();
     expect(dq.peek(second.type)).toBeNull();
     expect(dq.peek(third.type)).toBeNull();
