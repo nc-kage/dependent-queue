@@ -70,6 +70,15 @@ class DependentQueue<T> implements IDependentQueue<T> {
     queue.push(queueItem[0]);
   }
 
+  public checkQueueEmpty(type?: string): boolean {
+    return !this.layers.some((layer: ILayer<T>): boolean => {
+      const { queues } = layer;
+      return type
+        ? (queues[type] || []).length > 0
+        : Object.keys(queues).some((key: string): boolean => (queues[key] || []).length > 0);
+    });
+  }
+
   protected freezeItem(queueItem: IQueueItem<T>) {
     const { item } = queueItem;
     const layer = this.getItemLayer(item);
@@ -177,11 +186,21 @@ class DependentQueue<T> implements IDependentQueue<T> {
     const type = this.typeGetter(item);
     if (!type) return;
     if (!targetLayer.queues[type]) targetLayer.queues[type] = [];
-    const layerItemIndex = currentLayer.items.indexOf(item);
-    if (layerItemIndex >= 0) currentLayer.items.splice(layerItemIndex, 1);
+    this.removeFromLayer(currentLayer, item);
     targetLayer.queues[type].push(queueItem);
     targetLayer.items.push(item);
     queueItem.layer = targetLayer;
+  }
+
+  private removeFromLayer(layer: ILayer<T>, item: T) {
+    const type = this.typeGetter(item);
+    const { items, queues } = layer;
+    const itemsIndex = items.indexOf(item);
+    if (itemsIndex >= 0) items.splice(itemsIndex, 1);
+    const queueItemIndex = type && queues[type]
+      ? queues[type].findIndex((queueItem): boolean => queueItem.item === item)
+      : -1;
+    if (queueItemIndex >= 0) queues[type].splice(queueItemIndex, 1);
   }
 }
 

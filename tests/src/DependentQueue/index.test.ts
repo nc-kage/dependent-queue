@@ -153,7 +153,9 @@ describe('DependentQueue', () => {
     expect(dq.peek(first.type)).toEqual(first);
     expect(dq.peek()).toEqual(first);
     expect(dq.peek(second.type)).toEqual(second);
+    expect(dq.checkQueueEmpty()).toBeFalsy();
     expect(dq.peek(third.type)).toBeNull();
+    expect(dq.checkQueueEmpty(third.type)).toBeFalsy();
     expect(dq.peek(fourth.type)).toBeNull();
 
     expect(dq.poll(first.type)).toEqual(first);
@@ -182,5 +184,7 @@ describe('DependentQueue', () => {
     expect(dq.peek(third.type)).toBeNull();
     expect(dq.peek(fourth.type)).toBeNull();
     expect(dq.peek()).toBeNull();
+    expect(dq.checkQueueEmpty()).toBeTruthy();
+    expect(dq.checkQueueEmpty(third.type)).toBeTruthy();
   });
 });

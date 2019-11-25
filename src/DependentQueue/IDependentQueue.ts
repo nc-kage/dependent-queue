@@ -3,4 +3,5 @@ export default interface IDependentQueue<T> {
   poll(): T | null;
   offer(item: T, depend?: T | T[]): boolean | boolean[];
   moveEnd(item: T): void;
+  checkQueueEmpty(type?: string): boolean;
 }

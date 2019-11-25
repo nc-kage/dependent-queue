@@ -70,6 +70,14 @@ class DependentQueue {
         const queueItem = queue.splice(index, 1);
         queue.push(queueItem[0]);
     }
+    checkQueueEmpty(type) {
+        return !this.layers.some((layer) => {
+            const { queues } = layer;
+            return type
+                ? (queues[type] || []).length > 0
+                : Object.keys(queues).some((key) => (queues[key] || []).length > 0);
+        });
+    }
     freezeItem(queueItem) {
         const { item } = queueItem;
         const layer = this.getItemLayer(item);
@@ -187,12 +195,22 @@ class DependentQueue {
             return;
         if (!targetLayer.queues[type])
             targetLayer.queues[type] = [];
-        const layerItemIndex = currentLayer.items.indexOf(item);
-        if (layerItemIndex >= 0)
-            currentLayer.items.splice(layerItemIndex, 1);
+        this.removeFromLayer(currentLayer, item);
         targetLayer.queues[type].push(queueItem);
         targetLayer.items.push(item);
         queueItem.layer = targetLayer;
+    }
+    removeFromLayer(layer, item) {
+        const type = this.typeGetter(item);
+        const { items, queues } = layer;
+        const itemsIndex = items.indexOf(item);
+        if (itemsIndex >= 0)
+            items.splice(itemsIndex, 1);
+        const queueItemIndex = type && queues[type]
+            ? queues[type].findIndex((queueItem) => queueItem.item === item)
+            : -1;
+        if (queueItemIndex >= 0)
+            queues[type].splice(queueItemIndex, 1);
     }
 }
 exports.default = DependentQueue;
