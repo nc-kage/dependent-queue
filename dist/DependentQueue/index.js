@@ -3,14 +3,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const get_1 = __importDefault(require("lodash/get"));
 const isArray_1 = __importDefault(require("lodash/isArray"));
 const isNull_1 = __importDefault(require("lodash/isNull"));
 const isNumber_1 = __importDefault(require("lodash/isNumber"));
+const isUndefined_1 = __importDefault(require("lodash/isUndefined"));
 const last_1 = __importDefault(require("lodash/last"));
 class DependentQueue {
     constructor(typeGetter) {
         this.layers = [];
         this.typeOrder = [];
+        this.eventList = {};
         this.typeGetter = typeGetter || ((item) => '1');
     }
     peek(type) {
@@ -30,6 +33,7 @@ class DependentQueue {
         const index = items.indexOf(item);
         if (index >= 0)
             items.splice(index, 1);
+        this.changeHandler(this.typeGetter(item));
         return item;
     }
     offer(item, depend) {
@@ -77,6 +81,19 @@ class DependentQueue {
                 ? (queues[type] || []).length > 0
                 : Object.keys(queues).some((key) => (queues[key] || []).length > 0);
         });
+    }
+    on(name, handler) {
+        if (this.eventList[name])
+            this.eventList[name] = [];
+        this.eventList[name].push(handler);
+    }
+    off(name, handler) {
+        const handlers = this.eventList[name];
+        if (!handlers)
+            return;
+        const index = handlers.indexOf(handler);
+        if (index >= 0)
+            handlers.splice(index, 1);
     }
     freezeItem(queueItem) {
         const { item } = queueItem;
@@ -126,8 +143,11 @@ class DependentQueue {
         const queueItem = {
             item, layer, isFrozen: false, removeHandlers: [], dependList: dependList || [],
         };
-        layer.queues[type].push(queueItem);
-        layer.items.push(item);
+        const { queues, items } = layer;
+        queues[type].push(queueItem);
+        items.push(item);
+        if (layerIndex === 0)
+            this.changeHandler(type);
         return queueItem;
     }
     getLayer(index) {
@@ -199,6 +219,8 @@ class DependentQueue {
         targetLayer.queues[type].push(queueItem);
         targetLayer.items.push(item);
         queueItem.layer = targetLayer;
+        if (this.layers[0] === targetLayer)
+            this.changeHandler(type);
     }
     removeFromLayer(layer, item) {
         const type = this.typeGetter(item);
@@ -211,6 +233,38 @@ class DependentQueue {
             : -1;
         if (queueItemIndex >= 0)
             queues[type].splice(queueItemIndex, 1);
+    }
+    changeHandler(type) {
+        this.typeChangeHandler(type);
+        this.generalChangeHandler();
+    }
+    typeChangeHandler(type) {
+        const count = get_1.default(this, `layers[0].queues["${type}"].length`);
+        if (isUndefined_1.default(count))
+            return;
+        this.executeHandlers('onChangeType', type);
+        if (count === 0)
+            this.executeHandlers('onEmptyType', type);
+        if (count === 1)
+            this.executeHandlers('onExistType', type);
+    }
+    generalChangeHandler() {
+        const queues = get_1.default(this, 'layers[0].queues');
+        if (!queues)
+            return;
+        const count = Object.keys(queues).reduce((acc, type) => {
+            return acc + queues[type].length;
+        }, 0);
+        this.executeHandlers('onChange');
+        if (count === 0)
+            this.executeHandlers('onEmpty');
+        if (count === 1)
+            this.executeHandlers('onExist');
+    }
+    executeHandlers(name, type) {
+        (this.eventList[name] || []).forEach((handler) => {
+            handler(type);
+        });
     }
 }
 exports.default = DependentQueue;

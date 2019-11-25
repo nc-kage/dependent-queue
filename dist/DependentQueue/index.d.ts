@@ -1,15 +1,19 @@
 import IDependentQueue from './IDependentQueue';
 import IQueueItem from './IQueueItem';
+import { DependentQueueEventMapType } from './types';
 declare class DependentQueue<T> implements IDependentQueue<T> {
     private readonly typeGetter;
     private layers;
     private typeOrder;
+    private eventList;
     constructor(typeGetter?: (item: T) => string);
     peek(type?: string): T | null;
     poll(type?: string): T | null;
     offer(item: T, depend?: T | T[]): boolean | boolean[];
     moveEnd(item: T): void;
     checkQueueEmpty(type?: string): boolean;
+    on<K extends keyof DependentQueueEventMapType>(name: K, handler: (type?: string) => void): void;
+    off<K extends keyof DependentQueueEventMapType>(name: K, handler: (type?: string) => void): void;
     protected freezeItem(queueItem: IQueueItem<T>): void;
     private addTypeToOrderList;
     private getFirstLayerQueue;
@@ -22,5 +26,9 @@ declare class DependentQueue<T> implements IDependentQueue<T> {
     private removeItemHandler;
     private moveQueueItemToLayer;
     private removeFromLayer;
+    private changeHandler;
+    private typeChangeHandler;
+    private generalChangeHandler;
+    private executeHandlers;
 }
 export default DependentQueue;

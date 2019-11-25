@@ -1,16 +1,20 @@
+import get from 'lodash/get';
 import isArray from 'lodash/isArray';
 import isNull from 'lodash/isNull';
 import isNumber from 'lodash/isNumber';
+import isUndefined from 'lodash/isUndefined';
 import last from 'lodash/last';
 
 import IDependentQueue from './IDependentQueue';
 import ILayer from './ILayer';
 import IQueueItem from './IQueueItem';
+import { DependentQueueEventMapType } from './types';
 
 class DependentQueue<T> implements IDependentQueue<T> {
   private readonly typeGetter: (item: T) => string;
   private layers: Array<ILayer<T>> = [];
   private typeOrder: string[] = [];
+  private eventList: { [name: string]: Array<(type?: string) => void> } = {};
 
   constructor(typeGetter?: (item: T) => string) {
     this.typeGetter = typeGetter || ((item: T): string => '1');
@@ -30,6 +34,7 @@ class DependentQueue<T> implements IDependentQueue<T> {
     queueItem.removeHandlers.forEach(handler => handler());
     const index = items.indexOf(item);
     if (index >= 0) items.splice(index, 1);
+    this.changeHandler(this.typeGetter(item));
     return item;
   }
 
@@ -79,6 +84,22 @@ class DependentQueue<T> implements IDependentQueue<T> {
     });
   }
 
+  public on<K extends keyof DependentQueueEventMapType>(
+    name: K, handler: (type?: string) => void,
+  ): void {
+    if (this.eventList[name]) this.eventList[name] = [];
+    this.eventList[name].push(handler);
+  }
+
+  public off<K extends keyof DependentQueueEventMapType>(
+    name: K, handler: (type?: string) => void,
+  ): void {
+    const handlers = this.eventList[name];
+    if (!handlers) return;
+    const index = handlers.indexOf(handler);
+    if (index >= 0) handlers.splice(index, 1);
+  }
+
   protected freezeItem(queueItem: IQueueItem<T>) {
     const { item } = queueItem;
     const layer = this.getItemLayer(item);
@@ -120,8 +141,10 @@ class DependentQueue<T> implements IDependentQueue<T> {
     const queueItem = {
       item, layer, isFrozen: false, removeHandlers: [], dependList: dependList || [],
     };
-    layer.queues[type].push(queueItem);
-    layer.items.push(item);
+    const { queues, items } = layer;
+    queues[type].push(queueItem);
+    items.push(item);
+    if (layerIndex === 0) this.changeHandler(type);
     return queueItem;
   }
 
@@ -190,6 +213,7 @@ class DependentQueue<T> implements IDependentQueue<T> {
     targetLayer.queues[type].push(queueItem);
     targetLayer.items.push(item);
     queueItem.layer = targetLayer;
+    if (this.layers[0] === targetLayer) this.changeHandler(type);
   }
 
   private removeFromLayer(layer: ILayer<T>, item: T) {
@@ -201,6 +225,36 @@ class DependentQueue<T> implements IDependentQueue<T> {
       ? queues[type].findIndex((queueItem): boolean => queueItem.item === item)
       : -1;
     if (queueItemIndex >= 0) queues[type].splice(queueItemIndex, 1);
+  }
+
+  private changeHandler(type: string) {
+    this.typeChangeHandler(type);
+    this.generalChangeHandler();
+  }
+
+  private typeChangeHandler(type: string) {
+    const count = get(this, `layers[0].queues["${type}"].length`);
+    if (isUndefined(count)) return;
+    this.executeHandlers('onChangeType', type);
+    if (count === 0) this.executeHandlers('onEmptyType', type);
+    if (count === 1) this.executeHandlers('onExistType', type);
+  }
+
+  private generalChangeHandler() {
+    const queues = get(this, 'layers[0].queues');
+    if (!queues) return;
+    const count = Object.keys(queues).reduce((acc: number, type: string): number => {
+      return acc + queues[type].length;
+    }, 0);
+    this.executeHandlers('onChange');
+    if (count === 0) this.executeHandlers('onEmpty');
+    if (count === 1) this.executeHandlers('onExist');
+  }
+
+  private executeHandlers(name: string, type?: string) {
+    (this.eventList[name] || []).forEach((handler: (type?: string) => void) => {
+      handler(type);
+    });
   }
 }
 
