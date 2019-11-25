@@ -34,7 +34,7 @@ class DependentQueue<T> implements IDependentQueue<T> {
     queueItem.removeHandlers.forEach(handler => handler());
     const index = items.indexOf(item);
     if (index >= 0) items.splice(index, 1);
-    this.changeHandler(this.typeGetter(item));
+    this.changeHandler(this.typeGetter(item), true);
     return item;
   }
 
@@ -87,7 +87,7 @@ class DependentQueue<T> implements IDependentQueue<T> {
   public on<K extends keyof DependentQueueEventMapType>(
     name: K, handler: (type?: string) => void,
   ): void {
-    if (this.eventList[name]) this.eventList[name] = [];
+    if (!this.eventList[name]) this.eventList[name] = [];
     this.eventList[name].push(handler);
   }
 
@@ -227,28 +227,28 @@ class DependentQueue<T> implements IDependentQueue<T> {
     if (queueItemIndex >= 0) queues[type].splice(queueItemIndex, 1);
   }
 
-  private changeHandler(type: string) {
-    this.typeChangeHandler(type);
-    this.generalChangeHandler();
+  private changeHandler(type: string, isRemove: boolean = false) {
+    this.typeChangeHandler(type, isRemove);
+    this.generalChangeHandler(isRemove);
   }
 
-  private typeChangeHandler(type: string) {
+  private typeChangeHandler(type: string, isRemove: boolean) {
     const count = get(this, `layers[0].queues["${type}"].length`);
     if (isUndefined(count)) return;
-    this.executeHandlers('onChangeType', type);
-    if (count === 0) this.executeHandlers('onEmptyType', type);
-    if (count === 1) this.executeHandlers('onExistType', type);
+    this.executeHandlers('changeType', type);
+    if (count === 0 && isRemove) this.executeHandlers('emptyType', type);
+    if (count === 1 && !isRemove) this.executeHandlers('existType', type);
   }
 
-  private generalChangeHandler() {
+  private generalChangeHandler(isRemove: boolean) {
     const queues = get(this, 'layers[0].queues');
     if (!queues) return;
     const count = Object.keys(queues).reduce((acc: number, type: string): number => {
       return acc + queues[type].length;
     }, 0);
-    this.executeHandlers('onChange');
-    if (count === 0) this.executeHandlers('onEmpty');
-    if (count === 1) this.executeHandlers('onExist');
+    this.executeHandlers('change');
+    if (count === 0 && isRemove) this.executeHandlers('empty');
+    if (count === 1 && !isRemove) this.executeHandlers('exist');
   }
 
   private executeHandlers(name: string, type?: string) {

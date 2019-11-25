@@ -1,8 +1,8 @@
 export declare type DependentQueueEventMapType = {
-    onExist(): void;
-    onEmpty(): void;
-    onChange(): void;
-    onExistType(type: string): void;
-    onEmptyType(type: string): void;
-    onChangeType(type: string): void;
+    exist(): void;
+    empty(): void;
+    change(): void;
+    existType(type: string): void;
+    emptyType(type: string): void;
+    changeType(type: string): void;
 };

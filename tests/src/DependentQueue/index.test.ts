@@ -1,4 +1,5 @@
 /* tslint:disable:max-classes-per-file */
+import last from 'lodash/last';
 
 import DependentQueue from '../../../src/DependentQueue';
 
@@ -41,14 +42,33 @@ describe('DependentQueue', () => {
     const first = new FirstType();
     const second = new SecondType();
     const dq = new DependentQueue();
+    const existsCallback = jest.fn();
+    const emptyCallback = jest.fn();
+    const changeCallback = jest.fn();
+    dq.on('change', changeCallback);
+    dq.on('empty', emptyCallback);
+    dq.on('exist', existsCallback);
+
     dq.offer(first);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(1);
+    expect(emptyCallback.mock.calls.length).toBe(0);
     dq.offer(second);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(2);
+    expect(emptyCallback.mock.calls.length).toBe(0);
     expect(dq.peek()).toEqual(first);
     expect(dq.peek()).toEqual(first);
     expect(dq.poll()).toEqual(first);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(3);
+    expect(emptyCallback.mock.calls.length).toBe(0);
     expect(dq.peek()).toEqual(second);
     expect(dq.peek()).toEqual(second);
     expect(dq.poll()).toEqual(second);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(4);
+    expect(emptyCallback.mock.calls.length).toBe(1);
     expect(dq.peek()).toBeNull();
     expect(dq.poll()).toBeNull();
   });
@@ -57,14 +77,66 @@ describe('DependentQueue', () => {
     const first = new FirstType();
     const second = new SecondType();
     const dq = new DependentQueue(typeGetter);
+    const existsCallback = jest.fn();
+    const emptyCallback = jest.fn();
+    const changeCallback = jest.fn();
+
+    const existsTypeCallback = jest.fn();
+    const emptyTypeCallback = jest.fn();
+    const changeTypeCallback = jest.fn();
+
+    dq.on('change', changeCallback);
+    dq.on('empty', emptyCallback);
+    dq.on('exist', existsCallback);
+
+    dq.on('changeType', changeTypeCallback);
+    dq.on('emptyType', emptyTypeCallback);
+    dq.on('existType', existsTypeCallback);
+
     dq.offer(first);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(1);
+    expect(emptyCallback.mock.calls.length).toBe(0);
+    expect(existsTypeCallback.mock.calls.length).toBe(1);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(first.type);
+    expect(changeTypeCallback.mock.calls.length).toBe(1);
+    expect(last(changeTypeCallback.mock.calls)[0]).toBe(first.type);
+    expect(emptyTypeCallback.mock.calls.length).toBe(0);
+
     dq.offer(second);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(2);
+    expect(emptyCallback.mock.calls.length).toBe(0);
+    expect(existsTypeCallback.mock.calls.length).toBe(2);
+    expect(last(existsTypeCallback.mock.calls)[0]).toBe(second.type);
+    expect(changeTypeCallback.mock.calls.length).toBe(2);
+    expect(last(changeTypeCallback.mock.calls)[0]).toBe(second.type);
+    expect(emptyTypeCallback.mock.calls.length).toBe(0);
+
     expect(dq.peek()).toEqual(first);
     expect(dq.peek()).toEqual(first);
     expect(dq.poll()).toEqual(first);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(3);
+    expect(emptyCallback.mock.calls.length).toBe(0);
+    expect(existsTypeCallback.mock.calls.length).toBe(2);
+    expect(changeTypeCallback.mock.calls.length).toBe(3);
+    expect(last(changeTypeCallback.mock.calls)[0]).toBe(first.type);
+    expect(emptyTypeCallback.mock.calls.length).toBe(1);
+    expect(last(emptyTypeCallback.mock.calls)[0]).toBe(first.type);
+
     expect(dq.peek()).toEqual(second);
     expect(dq.peek()).toEqual(second);
     expect(dq.poll()).toEqual(second);
+    expect(existsCallback.mock.calls.length).toBe(1);
+    expect(changeCallback.mock.calls.length).toBe(4);
+    expect(emptyCallback.mock.calls.length).toBe(1);
+    expect(existsTypeCallback.mock.calls.length).toBe(2);
+    expect(changeTypeCallback.mock.calls.length).toBe(4);
+    expect(last(changeTypeCallback.mock.calls)[0]).toBe(second.type);
+    expect(emptyTypeCallback.mock.calls.length).toBe(2);
+    expect(last(emptyTypeCallback.mock.calls)[0]).toBe(second.type);
+
     expect(dq.peek()).toBeNull();
     expect(dq.poll()).toBeNull();
   });

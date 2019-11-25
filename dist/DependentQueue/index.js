@@ -33,7 +33,7 @@ class DependentQueue {
         const index = items.indexOf(item);
         if (index >= 0)
             items.splice(index, 1);
-        this.changeHandler(this.typeGetter(item));
+        this.changeHandler(this.typeGetter(item), true);
         return item;
     }
     offer(item, depend) {
@@ -83,7 +83,7 @@ class DependentQueue {
         });
     }
     on(name, handler) {
-        if (this.eventList[name])
+        if (!this.eventList[name])
             this.eventList[name] = [];
         this.eventList[name].push(handler);
     }
@@ -234,32 +234,32 @@ class DependentQueue {
         if (queueItemIndex >= 0)
             queues[type].splice(queueItemIndex, 1);
     }
-    changeHandler(type) {
-        this.typeChangeHandler(type);
-        this.generalChangeHandler();
+    changeHandler(type, isRemove = false) {
+        this.typeChangeHandler(type, isRemove);
+        this.generalChangeHandler(isRemove);
     }
-    typeChangeHandler(type) {
+    typeChangeHandler(type, isRemove) {
         const count = get_1.default(this, `layers[0].queues["${type}"].length`);
         if (isUndefined_1.default(count))
             return;
-        this.executeHandlers('onChangeType', type);
-        if (count === 0)
-            this.executeHandlers('onEmptyType', type);
-        if (count === 1)
-            this.executeHandlers('onExistType', type);
+        this.executeHandlers('changeType', type);
+        if (count === 0 && isRemove)
+            this.executeHandlers('emptyType', type);
+        if (count === 1 && !isRemove)
+            this.executeHandlers('existType', type);
     }
-    generalChangeHandler() {
+    generalChangeHandler(isRemove) {
         const queues = get_1.default(this, 'layers[0].queues');
         if (!queues)
             return;
         const count = Object.keys(queues).reduce((acc, type) => {
             return acc + queues[type].length;
         }, 0);
-        this.executeHandlers('onChange');
-        if (count === 0)
-            this.executeHandlers('onEmpty');
-        if (count === 1)
-            this.executeHandlers('onExist');
+        this.executeHandlers('change');
+        if (count === 0 && isRemove)
+            this.executeHandlers('empty');
+        if (count === 1 && !isRemove)
+            this.executeHandlers('exist');
     }
     executeHandlers(name, type) {
         (this.eventList[name] || []).forEach((handler) => {
